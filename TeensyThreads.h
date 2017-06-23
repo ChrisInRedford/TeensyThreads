@@ -11,6 +11,8 @@
 #define _THREADS_H
 
 #include <stdint.h>
+#include "../../../../../arduino/avr/cores/arduino/WString.h"
+
 //#include <utility>
 
 extern "C" {
@@ -140,16 +142,43 @@ protected:
 	* But in the future, a linked list might be more appropriate.
 	*/
 	ThreadInfo thread[MAX_THREADS];
-	struct threadStruct
+	/*struct threadStruct
 	{
 		ThreadInfo* prev;
 		Threads* t;
 		String threadName;
 		ThreadInfo* nxt;
+	};*/
+	typedef struct {
+	public:
+		uint8_t stack_size = 0; //How much memory will be needed by a calloc()?
+		uint8_t *stack = &stack_size; //Pointer to the memory given to the thread?
+		uint8_t my_stack = 0;
+		software_stack_t* softStack; //pointer to the stack this thread had/has access to. (Have to be able to implement critical sections of code) (can also reuse pointers to "dead" threads)
+		volatile uint8_t states = 0; //([FIRST_RUN], [STARTED], [STOPPED]) 3 flags, 1 byte
+		volatile uint8_t threadStates = 0; //([EMPTY], [RUNNING], [ENDED], [ENDING], [JOIN_WAIT], [PAUSED], [RESUMING]) //7 flags, 1 byte.
+		uint8_t priority = 0;
+		void *sp;
+		int ticks; //Maybe make it atomic?
+				   //And for those of us who have debugged code with an insane amounts of threading//
+		String threadName;
+	} threadInfo;
+
+	typedef struct threadNode{
+	public:
+		int numTotalThreads; //This will be the total length of the list.(Running threads or otherwise)
+		threadNode* prev;
+		ThreadInfo* threadInfo;
+		threadNode* next;
 	};
 
+	threadNode* head;
+	threadNode* tail;
+
 public:
-	Threads();
+	Threads()
+	{
+	}
 
 	// Create a new thread for function "p", passing argument "arg". If stack is 0,
 	// stack allocated on heap. Function "p" has form "void p(void *)".
